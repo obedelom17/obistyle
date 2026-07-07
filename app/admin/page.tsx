@@ -43,9 +43,25 @@ export default function Admin() {
   const [erreurMdp, setErreurMdp] = useState(false);
   const [produits, setProduits] = useState<Produit[]>([]);
   const [chargement, setChargement] = useState(false);
+  const [uploadEnCours, setUploadEnCours] = useState(false);
   const [message, setMessage] = useState("");
   const [messageOk, setMessageOk] = useState(false);
   const [form, setForm] = useState({ nom: "", prix: "", devise: "FCFA", categorie: "", description: "", image_url: "" });
+
+  const uploadImage = async (file: File) => {
+    setUploadEnCours(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+    const data = await res.json();
+    setUploadEnCours(false);
+    if (data.url) {
+      setForm(f => ({ ...f, image_url: data.url }));
+    } else {
+      setMessage(data.error || "Erreur upload");
+      setMessageOk(false);
+    }
+  };
 
   const seConnecter = () => {
     if (mdp === MOT_DE_PASSE) { setConnecte(true); chargerProduits(); }
@@ -175,6 +191,7 @@ export default function Admin() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@700&family=Jost:wght@400;500;600&display=swap');
         @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
         input:focus, textarea:focus, select:focus { border-color: rgba(212,163,89,0.6) !important; box-shadow: 0 0 0 3px rgba(212,163,89,0.1) !important; }
       `}</style>
 
@@ -253,15 +270,66 @@ export default function Admin() {
             </div>
 
             <div style={{ gridColumn: "1 / -1" }}>
-              <label style={labelStyle}>URL de l'image</label>
-              <input type="url" placeholder="https://..." value={form.image_url}
+              <label style={labelStyle}>Image du produit</label>
+              {/* Zone de drop/upload */}
+              <label style={{
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                gap: "12px", padding: "32px",
+                background: "rgba(212,163,89,0.04)",
+                border: "2px dashed rgba(212,163,89,0.25)",
+                borderRadius: "16px", cursor: "pointer",
+                transition: "border-color 0.2s, background 0.2s",
+                marginBottom: "12px",
+              }}
+              onDragOver={e => { e.preventDefault(); (e.currentTarget as HTMLLabelElement).style.borderColor = "#d4a359"; }}
+              onDragLeave={e => { (e.currentTarget as HTMLLabelElement).style.borderColor = "rgba(212,163,89,0.25)"; }}
+              onDrop={e => {
+                e.preventDefault();
+                (e.currentTarget as HTMLLabelElement).style.borderColor = "rgba(212,163,89,0.25)";
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith("image/")) uploadImage(file);
+              }}>
+                <input type="file" accept="image/*" style={{ display: "none" }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) uploadImage(f); }} />
+                {uploadEnCours ? (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
+                    <div style={{ width: "28px", height: "28px", border: "2px solid rgba(212,163,89,0.2)", borderTopColor: "#d4a359", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                    <span style={{ color: "rgba(212,163,89,0.5)", fontSize: "13px" }}>Upload en cours…</span>
+                  </div>
+                ) : form.image_url ? (
+                  <img src={form.image_url} alt="Aperçu" style={{
+                    height: "140px", borderRadius: "12px", objectFit: "cover",
+                    border: "1px solid rgba(212,163,89,0.3)", maxWidth: "100%"
+                  }} />
+                ) : (
+                  <>
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(212,163,89,0.4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                    <span style={{ color: "rgba(212,163,89,0.4)", fontSize: "13px", textAlign: "center" }}>
+                      Clique ou glisse une image ici
+                    </span>
+                    <span style={{ color: "rgba(212,163,89,0.25)", fontSize: "11px" }}>JPG, PNG, WEBP</span>
+                  </>
+                )}
+              </label>
+              {/* OU URL manuelle */}
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
+                <div style={{ flex: 1, height: "1px", background: "rgba(212,163,89,0.1)" }} />
+                <span style={{ color: "rgba(212,163,89,0.3)", fontSize: "11px", letterSpacing: "2px" }}>OU</span>
+                <div style={{ flex: 1, height: "1px", background: "rgba(212,163,89,0.1)" }} />
+              </div>
+              <input type="url" placeholder="Coller une URL d'image…" value={form.image_url}
                 onChange={e => setForm({ ...form, image_url: e.target.value })}
                 style={inputStyle} />
-              {form.image_url && (
-                <img src={form.image_url} alt="Aperçu" style={{
-                  marginTop: "12px", height: "140px", borderRadius: "12px",
-                  objectFit: "cover", border: "1px solid rgba(212,163,89,0.2)"
-                }} onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+              {form.image_url && !uploadEnCours && (
+                <button onClick={() => setForm(f => ({ ...f, image_url: "" }))} style={{
+                  marginTop: "8px", background: "none", border: "none",
+                  color: "rgba(231,76,60,0.6)", cursor: "pointer", fontSize: "12px",
+                  fontFamily: "'Jost', sans-serif", letterSpacing: "1px"
+                }}>
+                  Supprimer l'image
+                </button>
               )}
             </div>
 
