@@ -4,6 +4,14 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Obi Style — Mode Africaine",
   description: "Pagnes wax, vêtements et sacs artisanaux soigneusement sélectionnés, livrés partout dans le monde.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
   openGraph: {
     title: "Obi Style — Mode Africaine",
     description: "Pagnes wax, vêtements et sacs artisanaux. Livraison mondiale.",
